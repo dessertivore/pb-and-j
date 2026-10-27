@@ -1,0 +1,13 @@
+# IDE
+.idea/
+
+# Binaries
+/pb-and-j
+*.exe
+
+# Test/coverage output
+*.test
+*.out
+
+# Local env/config
+.env
