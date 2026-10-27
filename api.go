@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -16,26 +17,50 @@ type ChampsOutput struct {
 	}
 }
 
+type CreateUserInput struct {
+	Body User
+}
+
+type GetUserOutput struct {
+	Body []User
+}
+
 func apiEntryPoint() {
 	// Create a new router & API
 	router := chi.NewMux()
-	api := humachi.New(router, huma.DefaultConfig("My API", "1.0.0"))
+	api := humachi.New(router, huma.DefaultConfig("PB&JPI", "1.0.0"))
 
-	// Register GET /greeting/{name} handler.
+	users := make(map[string]User) // TODO add these to a db
+
+	// Register GET /champions handler
 	huma.Get(api, "/champions", func(ctx context.Context, _ *struct {
 	}) (*ChampsOutput, error) {
 		resp := &ChampsOutput{}
-		champs, err := getChamps(context.Background())
+		champs, err := getChampsString(context.Background())
 		if err != nil {
 			log.Fatal(err)
 		}
-		names := make([]string, len(champs))
-		for i, c := range champs {
-			names[i] = c.Name
-		}
-		resp.Body.Champs = names
+		resp.Body.Champs = champs
 		return resp, nil
 	})
+
+	// Register GET /users handler
+	huma.Get(api, "/users", func(ctx context.Context, _ *struct {
+	}) (*GetUserOutput, error) {
+		var userList []User
+		for _, v := range users {
+			userList = append(userList, v)
+		}
+		return &GetUserOutput{Body: userList}, nil
+	})
+
+	// Register POST /user handler
+	huma.Post(api, "/user", func(ctx context.Context, user *CreateUserInput) (*CreateUserInput, error) {
+		users[user.Body.DisplayName] = user.Body
+		fmt.Println("Successfully added " + user.Body.DisplayName)
+		return &CreateUserInput{Body: user.Body}, nil
+	})
+
 
 	// Start the server!
 	http.ListenAndServe("127.0.0.1:8888", router)
