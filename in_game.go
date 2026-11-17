@@ -22,10 +22,10 @@ const (
 const WinRateURL = "https://op.gg/lol/champions/%s/build/%s?target_champion=%s"
 
 type Action struct {
-	Side     Side       `json:"side"`
-	Type     ActionType `json:"type"`
-	Champion string     `json:"champion,omitempty" doc:"Empty for a skipped ban"`
-	Role     string     `json:"role" query:"role" enum:"top,jungle,mid,bottom,support" doc:"Lane role. User will have to guess this for opponent."`
+	Side     Side       `json:"side" default:"red"`
+	Type     ActionType `json:"type" default:"pick"`
+	Champion string     `json:"champion,omitempty" default:"yasuo" doc:"Empty for a skipped ban"`
+	Role     string     `json:"role" default:"top" query:"role" enum:"top,jungle,mid,bottom,support" doc:"Lane role. User will have to guess this for opponent."`
 }
 
 type Phase struct {
@@ -43,10 +43,9 @@ var phases = []Phase{
 }
 
 type PickBan struct {
-	ID       string `json:"id"`
-	User     User   `json:"user"`
-	UserSide Side
-	Actions  []Action `json:"actions" doc:"In action order"`
+	User     User     `json:"user" doc:"User"`
+	UserSide Side     `json:"side" default:"red"`
+	Actions  []Action `json:"actions" default:"[]" doc:"In action order"`
 }
 
 // By returns the champions a side picked or banned, in action order.
@@ -69,13 +68,14 @@ func getWinRates(action Action, user User) map[string]float64 {
 	}
 	if opponentSlug, ok := Champions[action.Champion]; ok {
 		for _, champion := range user.PreferredChampions {
-			webpageURL := fmt.Sprintf(WinRateURL, champion.Slug, action.Role, opponentSlug)
+			fullChampData := Champions[champion]
+			webpageURL := fmt.Sprintf(WinRateURL, fullChampData.Slug, action.Role, opponentSlug)
 			winRate := scrapeWinRates(webpageURL)
-			fmt.Printf("Win rate for %s against %s is %f", champion.Name, opponentSlug, winRate)
-			winRates[champion.Name] = winRate
+			fmt.Printf("Win rate for %s against %s is %f", fullChampData.Name, opponentSlug, winRate)
+			winRates[fullChampData.Name] = winRate
 		}
 
-		return map[string]float64{}
+		return winRates
 	}
-	return winRates
+	return map[string]float64{}
 }

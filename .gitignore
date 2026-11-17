@@ -8,6 +8,7 @@
 # Test/coverage output
 *.test
 *.out
+defaults.json
 
 # Local env/config
 .env

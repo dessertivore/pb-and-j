@@ -88,52 +88,8 @@ func getChamps(ctx context.Context) ([]string, error) {
 		champs = append(champs, name)
 		Champions[strings.ToLower(name)] = Champion{Name: name, Slug: slug, URL: full}
 	})
-
 	return champs, nil
 }
-
-//func getChampsString(ctx context.Context) ([]string, error) {
-//	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-//	defer cancel()
-
-//	req, err := http.NewRequestWithContext(ctx, http.MethodGet, championsURL, nil)
-//	if err != nil {
-//		return nil, err
-//	}
-//	resp, err := http.DefaultClient.Do(req)
-//	if err != nil {
-//		return nil, fmt.Errorf("fetching %s: %w", championsURL, err)
-//	}
-//	defer resp.Body.Close()
-//
-//	if resp.StatusCode != http.StatusOK {
-//		return nil, fmt.Errorf("fetching %s: status %d", championsURL, resp.StatusCode)
-//	}
-//
-//	doc, err := goquery.NewDocumentFromReader(resp.Body)
-//	if err != nil {
-//		return nil, fmt.Errorf("parsing html: %w", err)
-//	}
-//
-//	seen := make(map[string]bool)
-//	var champs []string
-//
-//	doc.Find(`a[href*="/champions/"]`).Each(func(_ int, s *goquery.Selection) {
-//		name := s.Text()
-//		if name == "" {
-//			return
-//		}
-//		// Collapse whitespace/newlines inside the anchor's text.
-//		if seen[name] {
-//			return
-//		}
-//
-//		seen[name] = true
-//		champs = append(champs, name)
-//	})
-//
-//	return champs, nil
-//}
 
 func scrapeWinRates(winRateURL string) float64 {
 
@@ -186,10 +142,8 @@ func scrapeWinRates(winRateURL string) float64 {
 		return 0
 	}
 	winRate := matches[1]
-	fmt.Println("Win rate string:", winRate)
 	output, err := strconv.ParseFloat(winRate, 64)
 	if err != nil {
-
 		fmt.Println("Win rate percentage could not be converted to float: ", err)
 		return 0
 	}
