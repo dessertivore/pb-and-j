@@ -94,6 +94,7 @@ func apiEntryPoint() {
 			AssignedRole:       user.Body.AssignedRole,
 		}
 		users[user.Body.DisplayName] = &newUser
+		game.User = newUser
 		fmt.Println("Successfully added " + user.Body.DisplayName)
 		return &CreateUserInput{Body: user.Body}, nil
 	})

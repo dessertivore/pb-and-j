@@ -29,7 +29,7 @@ var slugRe = regexp.MustCompile(`/champions/([a-z0-9]+)/?$`)
 
 func getChamps(ctx context.Context) ([]string, error) {
 	if len(Champions) != 0 {
-		var output = make([]string, len(Champions))
+		var output = make([]string, 0, len(Champions))
 		for _, champion := range Champions {
 			output = append(output, champion.Name)
 		}
