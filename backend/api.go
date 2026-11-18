@@ -128,5 +128,5 @@ func apiEntryPoint() {
 	})
 
 	// Start the server!
-	http.ListenAndServe("127.0.0.1:8888", router)
+	http.ListenAndServe(":8888", router)
 }

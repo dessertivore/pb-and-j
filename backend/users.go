@@ -10,8 +10,8 @@ type User struct {
 	Username           string     `json:"username" default:"dessertivore"`
 	PreferredChampions []string   `json:"preferredChampions" default:"[\"dr. mundo\", \"jinx\", \"lux\"]"`
 	AssignedRole       string     `json:"assignedRole" default:"mid" query:"role" enum:"top,jungle,mid,bottom,support" doc:"Lane role"`
-	ChampsValidated    bool       `json:"champsValidated" default:"false"`
-	ValidatedChamps    []Champion `json:"validatedChamps" default:"[]"`
+	ChampsValidated    bool       `json:"champsValidated" default:"false" required:"false"`
+	ValidatedChamps    []Champion `json:"validatedChamps" default:"[]" required:"false"`
 }
 
 func DefaultUser() *User {

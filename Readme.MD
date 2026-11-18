@@ -28,36 +28,23 @@ git clone https://github.com/dessertivore/pb-and-j.git
 cd pb-and-j
 ```
 
-Download dependencies:
+Run using Docker:
 
 ```bash
-go mod download
+make run_app
 ```
 
-Running the application
-
-Start the API server:
-
+Stop:
 ```bash
-go run .
+make stop
 ```
 
-The API listens on:
+While the backend and frontend servers are running, the frontend can be accessed on
 
 ```text
-http://127.0.0.1:8888
+http://localhost:5173/
 ```
-📡 API Reference
 
-PB&J exposes a REST API for managing champions, players and draft sessions.
-
-Method	Endpoint	Description
-GET	/champions	Retrieve available champions
-GET	/user	Retrieve registered users
-POST	/user	Register a user
-POST	/game	Create a draft session
-GET	/game	Retrieve draft sessions
-POST	/action	Submit a pick or ban
 
 A typical draft session follows this process:
 
@@ -66,49 +53,7 @@ Register players with their preferred champions and assigned roles.
 Create a game, specifying the player and their side (Blue or Red).
 Submit picks and bans as the draft progresses.
 When an opposing champion is selected, retrieve matchup win-rate information for your preferred champions.
-Example: Register a player
 
-POST /user
-
-```json
-{
-"displayName": "Player One",
-"username": "player1",
-"preferredChampions": [
-"smolder",
-"jhin",
-"ezreal"
-],
-"assignedRole": "bottom"
-}
-```
-Example: Create a game
-
-POST /game
-
-```text
-?username=player1&side=blue
-```
-
-The response contains a game ID which can be used to identify the draft session.
-
-Example: Submit a draft action
-
-POST /action
-
-```json
-{
-"pick_ban_id": "YOUR_GAME_ID",
-"action": {
-"side": "red",
-"type": "pick",
-"champion": "jinx",
-"role": "bottom"
-}
-}
-```
-
-The API can return matchup win-rate information for the player's preferred champions.
 
 🗺️ Draft Structure
 
@@ -138,4 +83,3 @@ Matchup statistics are sourced from external champion statistics websites and ma
 
 PB&J is an ongoing project.
 No data is persisted - all is stored in memory and lost when server is restarted.
-No frontend yet!

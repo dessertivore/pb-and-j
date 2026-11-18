@@ -114,38 +114,83 @@ function App() {
     }
   }
 
-  async function selectChampion(champion) {
-    if (!selectedSlot) return
+async function selectChampion(champion) {
+  if (!selectedSlot) return
 
-    const { actionSide, type } = selectedSlot
-    const isOpponent = actionSide === opponentSide
+  const { actionSide, type } = selectedSlot
+  const isOpponent = actionSide === opponentSide
 
-    const action = {
-      side: actionSide,
-      type,
-      champion: champion.toLowerCase(),
-      role: isOpponent ? opponentRole : profile.assignedRole,
-    }
-
-    try {
-      setError('')
-
-      const result = await api('/action', {
-        method: 'POST',
-        body: JSON.stringify({ action }),
-      })
-
-      setActions(previous => [...previous, action])
-
-      if (result?.win_rates) {
-        setWinRates(result.win_rates)
-      }
-
-      setSelectedSlot(null)
-    } catch (err) {
-      setError(err.message)
-    }
+  const action = {
+    side: actionSide,
+    type,
+    champion: champion.toLowerCase(),
+    role: isOpponent ? opponentRole : profile.assignedRole,
   }
+
+  try {
+    setError('')
+
+    const result = await api('/action', {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    })
+
+    setActions(previous => [...previous, action])
+
+    // API returns: {"Katarina": 51.75, "Xayah": 49.35}
+    if (isOpponent && type === 'pick' && result) {
+      setWinRates(result)
+    }
+
+    setSelectedSlot(null)
+  } catch (err) {
+    setError(err.message)
+  }
+}
+
+function MatchupResults() {
+  const results = Object.entries(winRates)
+    .filter(([champion, rate]) => typeof rate === 'number')
+    .sort((a, b) => b[1] - a[1])
+
+  if (!results.length) {
+    return (
+      <div className="empty-results">
+        Matchup statistics will appear when your opponent picks a champion.
+      </div>
+    )
+  }
+
+  return (
+    <div className="results-grid">
+      {results.map(([champion, rate], index) => (
+        <div className="result-card" key={champion}>
+          <div className="result-top">
+            <strong>{champion}</strong>
+            {index === 0 && (
+              <span className="best-matchup">BEST MATCHUP</span>
+            )}
+          </div>
+
+          <span className={`win-rate ${
+            rate >= 50 ? 'positive' : 'negative'
+          }`}>
+            {rate.toFixed(2)}%
+          </span>
+
+          <div className="win-rate-track">
+            <div
+              className={`win-rate-fill ${
+                rate >= 50 ? 'positive' : 'negative'
+              }`}
+              style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
   function TeamPanel({ teamSide }) {
     const isUser = teamSide === side
@@ -422,20 +467,7 @@ function App() {
                   <p>Win rates against the latest opposing pick.</p>
                 </div>
 
-                {Object.keys(winRates).length ? (
-                    <div className="results-grid">
-                      {Object.entries(winRates).map(([champion, rate]) => (
-                          <div className="result-card" key={champion}>
-                            <strong>{champion}</strong>
-                            <span>{rate.toFixed(2)}%</span>
-                          </div>
-                      ))}
-                    </div>
-                ) : (
-                    <div className="empty-results">
-                      Matchup statistics will appear when your opponent picks a champion.
-                    </div>
-                )}
+                <MatchupResults />
               </section>
             </main>
         )}
