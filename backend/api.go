@@ -50,7 +50,7 @@ func apiEntryPoint() {
 	// Create a new router & API
 	router := chi.NewMux()
 	api := humachi.New(router, huma.DefaultConfig("PB&JPI", "1.0.0"))
-
+	fmt.Println("Successfully started server")
 	champs, err := getChamps(context.Background())
 	if err != nil {
 		log.Fatal(err)
@@ -60,6 +60,7 @@ func apiEntryPoint() {
 	users["dessertivore"] = DefaultUser()
 	game := new(PickBan)
 	game.User = *users["dessertivore"]
+	fmt.Println("Champions scraped, default user set up for testing")
 	// Register GET /champions handler
 	huma.Get(api, "/champions", func(ctx context.Context, _ *struct {
 	}) (*ChampsOutput, error) {
@@ -125,6 +126,14 @@ func apiEntryPoint() {
 	// Register GET /game handler
 	huma.Get(api, "/game", func(ctx context.Context, in *struct{}) (*GetGameOutput, error) {
 		return &GetGameOutput{Body: *game}, nil
+	})
+
+	// Register POST /reset handler - resets game but keeps user
+	huma.Post(api, "/reset", func(ctx context.Context, in *struct{}) (*struct{}, error) {
+		user := game.User
+		game := new(PickBan)
+		game.User = user
+		return nil, nil
 	})
 
 	// Start the server!
