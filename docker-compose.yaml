@@ -1,10 +1,13 @@
 services:
   backend:
     build:
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8888:8888"
     restart: unless-stopped
+    depends_on:
+      - db
   frontend:
     build:
       context: ./frontend
@@ -13,3 +16,16 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+
+  db:
+    image: postgres:17-alpine
+    # restart: always
+    # set shared memory limit when using docker compose
+    shm_size: 64mb
+    environment:
+      POSTGRES_PASSWORD: this_isnt_secure
+    ports:
+      - "1234:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/db.sql
+

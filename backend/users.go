@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -12,6 +14,19 @@ type User struct {
 	AssignedRole       string     `json:"assignedRole" default:"mid" query:"role" enum:"top,jungle,mid,bottom,support" doc:"Lane role"`
 	ChampsValidated    bool       `json:"champsValidated" default:"false" required:"false"`
 	ValidatedChamps    []Champion `json:"validatedChamps" default:"[]" required:"false"`
+}
+
+type DBUser struct {
+	gorm.Model
+	DisplayName  string
+	Username     string
+	AssignedRole string
+}
+
+type UserToChampions struct {
+	gorm.Model
+	Username string
+	Champion string
 }
 
 func DefaultUser() *User {

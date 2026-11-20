@@ -9,6 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm"
 )
 
 type ChampsOutput struct {
@@ -46,12 +47,15 @@ type PostActionOutput struct {
 	Body map[string]float64 `json:"win_rates"`
 }
 
-func apiEntryPoint() {
+func apiEntryPoint(db *gorm.DB) {
 	// Create a new router & API
+	ctx := context.Background()
+	user, err := gorm.G[DBUser](db).First(ctx)
+	fmt.Println(user)
 	router := chi.NewMux()
 	api := humachi.New(router, huma.DefaultConfig("PB&JPI", "1.0.0"))
 	fmt.Println("Successfully started server")
-	champs, err := getChamps(context.Background())
+	champs, err := getChamps(context.Background(), db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -105,7 +109,7 @@ func apiEntryPoint() {
 		game.Actions = append(game.Actions, action.Body.Action)
 		if action.Body.Action.Side != game.UserSide {
 			if action.Body.Action.Type == "pick" {
-				winRates := getWinRates(action.Body.Action, game.User)
+				winRates := getWinRates(action.Body.Action, game.User, db)
 				fmt.Println("Successfully added action " + action.Body.Action.Type)
 				return &PostActionOutput{Body: winRates}, nil
 			} else {
