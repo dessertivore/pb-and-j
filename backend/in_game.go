@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
 type Side string
@@ -60,9 +62,9 @@ func (d PickBan) By(side Side, t ActionType) []string {
 }
 
 // For opponent's selection: compare their win rate percentage against user's top 5 champs (ordered)
-func getWinRates(action Action, user User) map[string]float64 {
+func getWinRates(action Action, user User, db *gorm.DB) map[string]float64 {
 	winRates := make(map[string]float64)
-	_, err := getChamps(context.Background())
+	_, err := getChamps(context.Background(), db)
 	if err != nil {
 		return map[string]float64{}
 	}
@@ -70,7 +72,11 @@ func getWinRates(action Action, user User) map[string]float64 {
 		for _, champion := range user.PreferredChampions {
 			fullChampData := Champions[champion]
 			webpageURL := fmt.Sprintf(WinRateURL, fullChampData.Slug, action.Role, opponentSlug)
-			winRate := scrapeWinRates(webpageURL)
+			winRate, err := scrapeWinRates(webpageURL)
+			if err != nil {
+				fmt.Println("Win rates not obtained. ", err)
+				return map[string]float64{}
+			}
 			fmt.Printf("Win rate for %s against %s is %f", fullChampData.Name, opponentSlug, winRate)
 			winRates[fullChampData.Name] = winRate
 		}

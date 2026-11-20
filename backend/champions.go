@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -11,12 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/PuerkitoBio/goquery"
 )
 
 const championsURL = "https://www.leagueoflegends.com/en-gb/champions/"
 
 type Champion struct {
+	gorm.Model
 	Name string // display name, e.g. "Wukong"
 	Slug string // URL slug, e.g. "monkeyking"
 	URL  string
@@ -27,7 +29,7 @@ var Champions = make(map[string]Champion)
 // Matches /en-gb/champions/<slug>/ but not the index page itself.
 var slugRe = regexp.MustCompile(`/champions/([a-z0-9]+)/?$`)
 
-func getChamps(ctx context.Context) ([]string, error) {
+func getChamps(ctx context.Context, db *gorm.DB) ([]string, error) {
 	if len(Champions) != 0 {
 		var output = make([]string, 0, len(Champions))
 		for _, champion := range Champions {
@@ -86,66 +88,70 @@ func getChamps(ctx context.Context) ([]string, error) {
 		}
 		seen[slug] = true
 		champs = append(champs, name)
-		Champions[strings.ToLower(name)] = Champion{Name: name, Slug: slug, URL: full}
+		championOrm := Champion{Name: name, Slug: slug, URL: full}
+		err := gorm.G[Champion](db).Create(ctx, &championOrm)
+		if err != nil {
+			fmt.Println("Failed to add", name, "to database")
+		}
+		Champions[strings.ToLower(name)] = championOrm
 	})
 	return champs, nil
 }
 
-func scrapeWinRates(winRateURL string) float64 {
-
+func scrapeWinRates(winRateURL string) (float64, error) {
 	client := &http.Client{Timeout: 15 * time.Second}
 
-	req, _ := http.NewRequest("GET", winRateURL, nil)
+	req, err := http.NewRequest("GET", winRateURL, nil)
+	if err != nil {
+		return 0, err
+	}
+
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+
+	// Parse the HTML response.
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
-	html := string(body)
+	// Find the Win rate element and extract its percentage.
+	var winRate float64
+	var found bool
 
-	// Find the Win rate element and its parent container.
-	labelRegex := regexp.MustCompile(
-		`(?s)<em[^>]*>\s*Win rate\s*</em>`,
-	)
+	doc.Find("em").EachWithBreak(func(i int, s *goquery.Selection) bool {
 
-	loc := labelRegex.FindStringIndex(html)
-	if loc == nil {
-		fmt.Println("Win rate element not found")
-		return 0
+		if strings.TrimSpace(s.Text()) == "Win rate" {
+
+			value := strings.TrimSuffix(
+				strings.TrimSpace(s.Parent().Find("b").First().Text()),
+				"%",
+			)
+
+			winRate, err = strconv.ParseFloat(value, 64)
+			found = err == nil
+
+			return false
+		}
+
+		return true
+	})
+
+	if !found {
+		if err != nil {
+			return 0, err
+		}
+		return 0, fmt.Errorf("win rate not found")
 	}
 
-	// Search the surrounding HTML for the percentage.
-	start := loc[0] - 500
-	if start < 0 {
-		start = 0
-	}
-
-	end := loc[1] + 500
-	if end > len(html) {
-		end = len(html)
-	}
-
-	section := html[start:end]
-
-	percentageRegex := regexp.MustCompile(`(\d{1,3}(?:\.\d+)?)%`)
-
-	matches := percentageRegex.FindStringSubmatch(section)
-	if len(matches) <= 1 {
-		return 0
-	}
-	winRate := matches[1]
-	output, err := strconv.ParseFloat(winRate, 64)
-	if err != nil {
-		fmt.Println("Win rate percentage could not be converted to float: ", err)
-		return 0
-	}
-	return output
+	return winRate, nil
 }
