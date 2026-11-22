@@ -159,5 +159,5 @@ func apiEntryPoint(db *gorm.DB) {
 	// Start the server!
 	fmt.Println("Successfully started server")
 
-	http.ListenAndServe(":8889", router)
+	http.ListenAndServe(":8888", router)
 }
