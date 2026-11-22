@@ -223,47 +223,6 @@ function App() {
     }
   }
 
-  function MatchupResults() {
-    const results = Object.entries(winRates)
-      .filter(([champion, rate]) => typeof rate === 'number')
-      .sort((a, b) => b[1] - a[1])
-
-    if (!results.length) {
-      return (
-        <div className="empty-results">
-          Matchup statistics will appear when your opponent picks a champion.
-        </div>
-      )
-    }
-
-    return (
-      <div className="results-grid">
-        {results.map(([champion, rate], index) => (
-          <div className="result-card" key={champion}>
-            <div className="result-top">
-              <strong>{champion}</strong>
-              {index === 0 && (
-                <span className="best-matchup">BEST MATCHUP</span>
-              )}
-            </div>
-
-            <span className={`win-rate ${rate >= 50 ? 'positive' : 'negative'
-              }`}>
-              {rate.toFixed(2)}%
-            </span>
-
-            <div className="win-rate-track">
-              <div
-                className={`win-rate-fill ${rate >= 50 ? 'positive' : 'negative'
-                  }`}
-                style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
 
   async function resetGame() {
     try {
@@ -614,16 +573,6 @@ function App() {
             <TeamPanel teamSide={opponentSide} />
           </div>
 
-
-          <section className="results-section">
-            <div className="results-heading">
-              <span className="eyebrow">MATCHUP ANALYSIS</span>
-              <h2>Your champion matchups</h2>
-              <p>Win rates against the latest opposing pick.</p>
-            </div>
-
-            <MatchupResults />
-          </section>
         </main>
       )}
 
