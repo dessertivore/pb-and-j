@@ -45,7 +45,7 @@ var phases = []Phase{
 }
 
 type PickBan struct {
-	User     User     `json:"user" doc:"User"`
+	Team     Team     `json:"team" doc:"team"`
 	UserSide Side     `json:"side" default:"red"`
 	Actions  []Action `json:"actions" default:"[]" doc:"In action order"`
 }
@@ -64,20 +64,23 @@ func (d PickBan) By(side Side, t ActionType) []string {
 // For opponent's selection: compare their win rate percentage against user's top 5 champs (ordered)
 func getWinRates(action Action, user User, db *gorm.DB) map[string]float64 {
 	winRates := make(map[string]float64)
-	_, err := getChamps(context.Background(), db)
-	if err != nil {
-		return map[string]float64{}
+	if len(Champions) == 0 {
+		fmt.Println("Getting champions from DB/internet as not cached")
+		_, err := getChamps(context.Background(), db, false)
+		if err != nil {
+			return map[string]float64{}
+		}
 	}
-	if opponentSlug, ok := Champions[action.Champion]; ok {
+	if opponent, ok := Champions[action.Champion]; ok {
 		for _, champion := range user.PreferredChampions {
 			fullChampData := Champions[champion]
-			webpageURL := fmt.Sprintf(WinRateURL, fullChampData.Slug, action.Role, opponentSlug)
+			webpageURL := fmt.Sprintf(WinRateURL, fullChampData.Slug, action.Role, opponent.Slug)
 			winRate, err := scrapeWinRates(webpageURL)
 			if err != nil {
 				fmt.Println("Win rates not obtained. ", err)
-				return map[string]float64{}
+				winRates[fullChampData.Name] = 0
 			}
-			fmt.Printf("Win rate for %s against %s is %f", fullChampData.Name, opponentSlug, winRate)
+			fmt.Printf("Win rate for %s against %s is %f \n", fullChampData.Name, opponent.Name, winRate)
 			winRates[fullChampData.Name] = winRate
 		}
 

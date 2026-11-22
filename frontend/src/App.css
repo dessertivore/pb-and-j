@@ -337,7 +337,7 @@ button {
   border-radius: 14px;
 }
 
-.role-selector > label {
+.role-selector>label {
   color: #9ba8bd;
   font-size: 11px;
   font-weight: 700;
@@ -750,6 +750,86 @@ button {
   border-radius: 50%;
   animation: loading-spin 0.8s linear infinite;
 }
+
+.role-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color, #333);
+}
+
+.role-tab {
+  position: relative;
+  padding: 14px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.role-tab:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.role-tab.active {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.tab-indicator {
+  margin-left: 6px;
+  color: #22c55e;
+}
+
+.player-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.profile-heading h2 {
+  margin: 6px 0 0;
+}
+
+.profile-role {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-progress {
+  margin: 24px 0 16px;
+  color: var(--text-secondary, #999);
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .role-tabs {
+    gap: 3px;
+  }
+
+  .role-tab {
+    padding: 12px 3px;
+    font-size: 11px;
+  }
+}
+
 
 @keyframes loading-spin {
   to {

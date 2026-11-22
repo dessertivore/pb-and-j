@@ -1,16 +1,19 @@
 package main
 
 import (
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("public.db"), &gorm.Config{})
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  "host=localhost user=postgres password=this_isnt_secure port=1234 dbname=postgres sslmode=disable TimeZone=Europe/London",
+		PreferSimpleProtocol: true, // disables implicit prepared statement usage
+	}), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
-	db.AutoMigrate(&DBUser{}, &UserToChampions{})
-	db.AutoMigrate(&Champion{})
+	db.AutoMigrate(&DBUser{}, &UserToChampion{}, &Champion{})
+
 	apiEntryPoint(db)
 }

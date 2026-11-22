@@ -5,12 +5,19 @@ import './App.css'
 const API = '/api'
 const ROLES = ['top', 'jungle', 'mid', 'bottom', 'support']
 
-const emptyProfile = {
-  displayName: '',
-  username: '',
-  preferredChampions: [],
-  assignedRole: 'mid',
-}
+
+const createEmptyProfiles = () =>
+  Object.fromEntries(
+    ROLES.map(role => [
+      role,
+      {
+        displayName: '',
+        username: '',
+        assignedRole: role,
+        preferredChampions: [],
+      },
+    ])
+  )
 
 async function api(path, options = {}) {
   const response = await fetch(`${API}${path}`, {
@@ -30,16 +37,11 @@ async function api(path, options = {}) {
 }
 
 function App() {
+  const [activeRole, setActiveRole] = useState('top')
   const [page, setPage] = useState('draft')
   const [pickLoading, setPickLoading] = useState(false)
   const [champions, setChampions] = useState([])
-  const [profile, setProfile] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('pb-profile')) || emptyProfile
-    } catch {
-      return emptyProfile
-    }
-  })
+ const [profiles, setProfiles] = useState(createEmptyProfiles)
 
   const [side, setSide] = useState('blue')
   const [actions, setActions] = useState([])
@@ -49,28 +51,52 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function initialise() {
-      try {
-        const [champData, gameData] = await Promise.all([
-          api('/champions'),
-          api('/game'),
-        ])
+  async function initialise() {
+    try {
+      const [champData, gameData, userData] = await Promise.all([
+        api('/champions'),
+        api('/game'),
+        api('/user'),
+      ])
 
-        setChampions(champData.champs || [])
-        setActions(gameData.actions || [])
+      setChampions(champData.champs || [])
+      setActions(gameData.actions || [])
 
-        if (gameData.side) {
-          setSide(gameData.side)
-        }
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
+      if (gameData.side) {
+        setSide(gameData.side)
       }
-    }
 
-    initialise()
-  }, [])
+      // Start with five empty profiles
+      const loadedProfiles = createEmptyProfiles()
+
+      // Populate profiles from existing database users
+      console.log(userData)
+      userData.forEach(user => {
+        const role = user.assignedRole?.toLowerCase()
+
+        if (!loadedProfiles[role]) return
+
+        loadedProfiles[role] = {
+          displayName: user.displayName || '',
+          username: user.username || '',
+          assignedRole: role,
+          preferredChampions: (
+            user.preferredChampions || []
+          ).map(champ => champ.toLowerCase()),
+        }
+      })
+
+      setProfiles(loadedProfiles)
+
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  initialise()
+}, [])
 
   const opponentSide = side === 'blue' ? 'red' : 'blue'
 
@@ -78,6 +104,15 @@ function App() {
     return actions.filter(
       action => action.side === actionSide && action.type === type
     )
+  }
+  function updateProfile(role, updates) {
+    setProfiles(previous => ({
+      ...previous,
+      [role]: {
+        ...previous[role],
+        ...updates,
+      },
+    }))
   }
 
   // function updatePickRole(action, role) {
@@ -95,16 +130,23 @@ function App() {
     setError('')
 
     try {
-      await api('/user', {
-        method: 'POST',
-        body: JSON.stringify(profile),
-      })
+      const configuredProfiles = Object.values(profiles).filter(
+        profile => profile.username.trim() !== ''
+      )
+
+      await Promise.all(
+        configuredProfiles.map(profile =>
+          api('/user', {
+            method: 'POST',
+            body: JSON.stringify(profile),
+          })
+        )
+      )
 
       await api(`/side?side=${side}`, {
         method: 'POST',
       })
 
-      localStorage.setItem('pb-profile', JSON.stringify(profile))
       setPage('draft')
     } catch (err) {
       setError(err.message)
@@ -272,7 +314,7 @@ function App() {
                         setSelectedSlot({
                           actionSide: teamSide,
                           type: group.type,
-                          role: teamSide !== side ? 'bottom' : profile.assignedRole,
+                          role: 'mid',
                         })
                       }
                     }}
@@ -350,103 +392,145 @@ function App() {
 
       {error && <div className="error">{error}</div>}
 
+
       {page === 'profile' ? (
         <main className="settings-page">
           <div className="page-heading">
             <span className="eyebrow">CONFIGURATION</span>
             <h1>Player details</h1>
-            <p>Configure your preferences before entering champion select.</p>
+            <p>
+              Configure a player profile for each position.
+            </p>
           </div>
 
           <form className="settings-card" onSubmit={saveProfile}>
-            <label>
-              Display name
-              <input
-                value={profile.displayName}
-                onChange={e => setProfile({
-                  ...profile,
-                  displayName: e.target.value,
-                })}
-                required
-              />
-            </label>
 
-            <label>
-              Username
-              <input
-                value={profile.username}
-                onChange={e => setProfile({
-                  ...profile,
-                  username: e.target.value,
-                })}
-                required
-              />
-            </label>
+            {/* Role tabs */}
+            <div className="role-tabs">
+              {ROLES.map(role => (
+                <button
+                  key={role}
+                  type="button"
+                  className={`role-tab ${activeRole === role ? 'active' : ''
+                    }`}
+                  onClick={() => setActiveRole(role)}
+                >
+                  {role.toUpperCase()}
 
-            <label>
-              Assigned role
-              <select
-                value={profile.assignedRole}
-                onChange={e => setProfile({
-                  ...profile,
-                  assignedRole: e.target.value,
-                })}
-              >
-                {ROLES.map(role => (
-                  <option key={role} value={role}>
-                    {role.toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </label>
+                  {profiles[role].username && (
+                    <span className="tab-indicator">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
 
-            <div className="field">
-              <label>Preferred champions</label>
-              <p className="field-description">
-                Select up to five champions from the available champion list.
-              </p>
+            {/* Active player profile */}
+            {(() => {
+              const profile = profiles[activeRole]
 
-              <div className="champion-picker-list">
-                {champions.map(champion => {
-                  const selected = profile.preferredChampions.includes(
-                    champion.toLowerCase()
-                  )
+              return (
+                <div className="player-profile">
+                  <div className="profile-heading">
+                    <div>
+                      <span className="eyebrow">
+                        PLAYER PROFILE
+                      </span>
+                      <h2>{activeRole.toUpperCase()}</h2>
+                    </div>
+                    <span className="profile-role">
+                      {activeRole.toUpperCase()}
+                    </span>
+                  </div>
 
-                  return (
-                    <button
-                      type="button"
-                      key={champion}
-                      className={`champion-choice ${selected ? 'selected' : ''}`}
-                      onClick={() => {
+                  <label>
+                    Display name
+                    <input
+                      value={profile.displayName}
+                      onChange={e =>
+                        updateProfile(activeRole, {
+                          displayName: e.target.value,
+                        })
+                      }
+                      placeholder="Enter display name"
+                    />
+                  </label>
+
+                  <label>
+                    Username
+                    <input
+                      value={profile.username}
+                      onChange={e =>
+                        updateProfile(activeRole, {
+                          username: e.target.value,
+                        })
+                      }
+                      placeholder="Enter username"
+                    />
+                  </label>
+
+                  <div className="field">
+                    <label>Preferred champions</label>
+
+                    <p className="field-description">
+                      Select up to five preferred champions for this role.
+                    </p>
+
+                    <div className="champion-picker-list">
+                      {champions.map(champion => {
                         const key = champion.toLowerCase()
-                        setProfile(previous => ({
-                          ...previous,
-                          preferredChampions: selected
-                            ? previous.preferredChampions.filter(c => c !== key)
-                            : previous.preferredChampions.length < 5
-                              ? [...previous.preferredChampions, key]
-                              : previous.preferredChampions,
-                        }))
-                      }}
-                    >
-                      {selected && '✓ '}
-                      {champion}
-                    </button>
-                  )
-                })}
-              </div>
 
-              <span className="field-description">
-                {profile.preferredChampions.length}/5 selected
+                        const selected =
+                          profile.preferredChampions.includes(key)
+
+                        return (
+                          <button
+                            type="button"
+                            key={champion}
+                            className={`champion-choice ${selected ? 'selected' : ''
+                              }`}
+                            onClick={() => {
+                              updateProfile(activeRole, {
+                                preferredChampions: selected
+                                  ? profile.preferredChampions.filter(
+                                    c => c !== key
+                                  )
+                                  : profile.preferredChampions.length < 5
+                                    ? [...profile.preferredChampions, key]
+                                    : profile.preferredChampions,
+                              })
+                            }}
+                          >
+                            {selected && '✓ '}
+                            {champion}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    <span className="field-description">
+                      {profile.preferredChampions.length}/5 selected
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Profile progress */}
+            <div className="profile-progress">
+              <span>
+                {Object.values(profiles).filter(
+                  p => p.username.trim() !== ''
+                ).length} / 5 profiles configured
               </span>
             </div>
 
             <button className="primary-button" type="submit">
-              Save player details
+              Save all player profiles
             </button>
           </form>
         </main>
       ) : (
+
         <main className="draft-page">
           <div className="page-heading draft-heading">
             <div>
@@ -490,8 +574,10 @@ function App() {
 
             <div className="player-summary">
               <span className="toolbar-label">PLAYER</span>
-              <strong>{profile.displayName || 'Not configured'}</strong>
-              <span>{profile.assignedRole.toUpperCase()}</span>
+              <strong>
+                {Object.values(profiles).filter(p => p.username).length} / 5 players configured
+              </strong>
+              <span>PLAYER PROFILES</span>
             </div>
           </div>
 

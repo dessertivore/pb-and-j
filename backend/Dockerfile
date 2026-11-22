@@ -1,7 +1,7 @@
 # Build
 FROM golang:1.27.3-alpine
 
-WORKDIR /.
+WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download

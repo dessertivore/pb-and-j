@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -49,22 +50,15 @@ type PostActionOutput struct {
 
 func apiEntryPoint(db *gorm.DB) {
 	// Create a new router & API
-	ctx := context.Background()
-	user, err := gorm.G[DBUser](db).First(ctx)
-	fmt.Println(user)
 	router := chi.NewMux()
 	api := humachi.New(router, huma.DefaultConfig("PB&JPI", "1.0.0"))
-	fmt.Println("Successfully started server")
-	champs, err := getChamps(context.Background(), db)
+	champs, err := getChamps(context.Background(), db, false)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
-
-	users := make(map[string]*User, 5) // TODO add these to a db if having multiple
-	users["dessertivore"] = DefaultUser()
 	game := new(PickBan)
-	game.User = *users["dessertivore"]
-	fmt.Println("Champions scraped, default user set up for testing")
+	game.Team = CreateTeamFromUsers(GetUsersFromDB(*db, []string{}, ""))
+	fmt.Println("Champions scraped or obtained from db, default user set up for testing")
 	// Register GET /champions handler
 	huma.Get(api, "/champions", func(ctx context.Context, _ *struct {
 	}) (*ChampsOutput, error) {
@@ -75,32 +69,40 @@ func apiEntryPoint(db *gorm.DB) {
 
 	// Register GET /users handler
 	huma.Get(api, "/user", func(ctx context.Context, in *GetUsersInput) (*GetUsersOutput, error) {
-		userList := make([]User, 0, len(users))
-		if in.Username != "" {
-			userList = append(userList, *users[in.Username])
+		var userSearch []string
+		if in.Username == "" {
+			userSearch = []string{}
 		} else {
-			for _, v := range users {
-				userList = append(userList, *v)
-			}
+			userSearch = []string{in.Username}
 		}
+		userList := GetUsersFromDB(*db, userSearch, "")
 		return &GetUsersOutput{Body: userList}, nil
 	})
 
 	// Register POST /user handler
 	huma.Post(api, "/user", func(ctx context.Context, user *CreateUserInput) (*CreateUserInput, error) {
-		validatedChamps := ValidateChamps(&user.Body.PreferredChampions)
+		validatedChamps := ValidateChampsAgainstCache(&user.Body.PreferredChampions)
 
-		newUser := User{
-			DisplayName:        user.Body.DisplayName,
-			Username:           user.Body.Username,
-			ChampsValidated:    true,
-			ValidatedChamps:    validatedChamps,
-			PreferredChampions: user.Body.PreferredChampions,
-			AssignedRole:       user.Body.AssignedRole,
+		result := db.Save(&DBUser{DisplayName: user.Body.DisplayName,
+			Username:     user.Body.Username,
+			AssignedRole: user.Body.AssignedRole})
+
+		if result.Error != nil {
+			fmt.Println(result.Error)
+			return nil, result.Error
 		}
-		users[user.Body.DisplayName] = &newUser
-		game.User = newUser
-		fmt.Println("Successfully added " + user.Body.DisplayName)
+
+		var champOrms []UserToChampion
+		for _, validatedChamp := range validatedChamps {
+			champOrms = append(champOrms, UserToChampion{Username: user.Body.Username, ChampionName: strings.ToLower(validatedChamp.Name)})
+		}
+		result = db.Save(&champOrms)
+		if result.Error != nil {
+			fmt.Println(result.Error)
+			return nil, result.Error
+		}
+
+		fmt.Println("Successfully added or updated " + user.Body.DisplayName)
 		return &CreateUserInput{Body: user.Body}, nil
 	})
 
@@ -109,14 +111,19 @@ func apiEntryPoint(db *gorm.DB) {
 		game.Actions = append(game.Actions, action.Body.Action)
 		if action.Body.Action.Side != game.UserSide {
 			if action.Body.Action.Type == "pick" {
-				winRates := getWinRates(action.Body.Action, game.User, db)
+
+				relevantUser := GetUsersFromDB(*db, []string{}, action.Body.Action.Role)
+				fmt.Println("Comparing win rates against champs for", relevantUser[0].DisplayName)
+				winRates := getWinRates(action.Body.Action, relevantUser[0], db)
 				fmt.Println("Successfully added action " + action.Body.Action.Type)
+				delete(Champions, action.Body.Action.Champion) // can't reuse
 				return &PostActionOutput{Body: winRates}, nil
 			} else {
+				delete(Champions, action.Body.Action.Champion) // can't reuse
 				return &PostActionOutput{Body: make(map[string]float64)}, nil
 			}
 		}
-
+		delete(Champions, action.Body.Action.Champion) // can't reuse
 		return nil, nil
 
 	})
@@ -134,12 +141,14 @@ func apiEntryPoint(db *gorm.DB) {
 
 	// Register POST /reset handler - resets game but keeps user
 	huma.Post(api, "/reset", func(ctx context.Context, in *struct{}) (*struct{}, error) {
-		user := game.User
-		game := new(PickBan)
-		game.User = user
+		game = new(PickBan)
+		game.Team = CreateTeamFromUsers(GetUsersFromDB(*db, []string{}, ""))
+		champs, err = getChamps(ctx, db, true)
 		return nil, nil
 	})
 
 	// Start the server!
-	http.ListenAndServe(":8888", router)
+	fmt.Println("Successfully started server")
+
+	http.ListenAndServe(":8889", router)
 }

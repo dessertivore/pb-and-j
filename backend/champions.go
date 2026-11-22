@@ -18,8 +18,7 @@ import (
 const championsURL = "https://www.leagueoflegends.com/en-gb/champions/"
 
 type Champion struct {
-	gorm.Model
-	Name string // display name, e.g. "Wukong"
+	Name string `gorm:"primaryKey"` // display name, e.g. "Wukong"
 	Slug string // URL slug, e.g. "monkeyking"
 	URL  string
 }
@@ -29,14 +28,29 @@ var Champions = make(map[string]Champion)
 // Matches /en-gb/champions/<slug>/ but not the index page itself.
 var slugRe = regexp.MustCompile(`/champions/([a-z0-9]+)/?$`)
 
-func getChamps(ctx context.Context, db *gorm.DB) ([]string, error) {
-	if len(Champions) != 0 {
+func getChamps(ctx context.Context, db *gorm.DB, forceRefreshCache bool) ([]string, error) {
+	if len(Champions) != 0 && forceRefreshCache == false {
 		var output = make([]string, 0, len(Champions))
 		for _, champion := range Champions {
 			output = append(output, champion.Name)
 		}
 		return output, nil
 	}
+	if forceRefreshCache == true {
+		fmt.Println("Forcing cache refresh for champions")
+	}
+	var champions []Champion
+	dbResult := db.Find(&champions)
+	if dbResult.Error == nil && dbResult.RowsAffected != 0 {
+		var output = make([]string, 0, len(Champions))
+		for _, champion := range champions {
+			output = append(output, champion.Name)
+			Champions[strings.ToLower(champion.Name)] = champion
+		}
+		return output, nil
+	}
+	fmt.Println("Failed to load champs from db, scraping them again.", dbResult.Error, "Scraping again.")
+
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
@@ -89,9 +103,9 @@ func getChamps(ctx context.Context, db *gorm.DB) ([]string, error) {
 		seen[slug] = true
 		champs = append(champs, name)
 		championOrm := Champion{Name: name, Slug: slug, URL: full}
-		err := gorm.G[Champion](db).Create(ctx, &championOrm)
-		if err != nil {
-			fmt.Println("Failed to add", name, "to database")
+		result := db.Create(&championOrm)
+		if result.Error != nil {
+			fmt.Println("Failed to add", name, "to database", result.Error)
 		}
 		Champions[strings.ToLower(name)] = championOrm
 	})
