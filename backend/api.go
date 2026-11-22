@@ -60,6 +60,7 @@ func apiEntryPoint(db *gorm.DB) {
 	}
 	availableChamps := champs
 	game := new(PickBan)
+	game.UserSide = "blue" // default to blue side
 	game.Team = CreateTeamFromUsers(GetUsersFromDB(*db, []string{}, ""))
 	fmt.Println("Champions scraped or obtained from db, default user set up for testing")
 	// Register GET /champions handler
