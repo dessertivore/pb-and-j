@@ -40,7 +40,9 @@ function App() {
   const [activeRole, setActiveRole] = useState('top')
   const [page, setPage] = useState('draft')
   const [pickLoading, setPickLoading] = useState(false)
-  const [champions, setChampions] = useState([])
+  const [allChampions, setAllChampions] = useState([])
+  const [availableChampions, setAvailableChampions] = useState([])
+
   const [profiles, setProfiles] = useState(createEmptyProfiles)
 
   const [side, setSide] = useState('blue')
@@ -54,12 +56,13 @@ function App() {
     async function initialise() {
       try {
         const [champData, gameData, userData] = await Promise.all([
-          api('/champions'),
+          api('/champions?all=true'),
           api('/game'),
           api('/user'),
         ])
-
-        setChampions(champData.champs || [])
+        const availableData = await api('/champions?all=false')
+        setAvailableChampions(availableData.champs || [])
+        setAllChampions(champData.champs || [])
         setActions(gameData.actions || [])
 
         if (gameData.side) {
@@ -210,6 +213,9 @@ function App() {
         },
       ])
 
+      const availableData = await api('/champions?all=false')
+      setAvailableChampions(availableData.champs || [])
+
     } catch (err) {
       setError(err.message)
 
@@ -270,6 +276,7 @@ function App() {
 
       setActions([])
       setSelectedSlot(null)
+      setAvailableChampions(allChampions)
     } catch (err) {
       setError(err.message)
     }
@@ -324,7 +331,7 @@ function App() {
                     {action ? (
                       <>
                         <span className="champion-name">
-                          {champions.find(
+                          {allChampions.find(
                             c => c.toLowerCase() === action.champion
                           ) || action.champion}
                         </span>
@@ -495,7 +502,7 @@ function App() {
                     </p>
 
                     <div className="champion-picker-list">
-                      {champions.map(champion => {
+                      {allChampions.map(champion => {
                         const key = champion.toLowerCase()
 
                         const selected =
@@ -672,7 +679,7 @@ function App() {
             </div>
 
             <div className="champion-picker-list modal-list">
-              {champions.map(champion => (
+              {availableChampions.map(champion => (
                 <button
                   key={champion}
                   className="champion-choice"

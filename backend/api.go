@@ -18,7 +18,9 @@ type ChampsOutput struct {
 		Champs []string `json:"champs" example:"[\"Dr Mundo\"]" doc:"List of available champs"`
 	}
 }
-
+type GetChampionsInput struct {
+	All bool `query:"all" nullable:"true"`
+}
 type GetUsersInput struct {
 	Username string `query:"username" example:"dessertivore"`
 }
@@ -56,14 +58,18 @@ func apiEntryPoint(db *gorm.DB) {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	availableChamps := champs
 	game := new(PickBan)
 	game.Team = CreateTeamFromUsers(GetUsersFromDB(*db, []string{}, ""))
 	fmt.Println("Champions scraped or obtained from db, default user set up for testing")
 	// Register GET /champions handler
-	huma.Get(api, "/champions", func(ctx context.Context, _ *struct {
-	}) (*ChampsOutput, error) {
+	huma.Get(api, "/champions", func(ctx context.Context, in *GetChampionsInput) (*ChampsOutput, error) {
 		resp := &ChampsOutput{}
-		resp.Body.Champs = champs
+		if in.All {
+			resp.Body.Champs = champs
+		} else {
+			resp.Body.Champs = availableChamps
+		}
 		return resp, nil
 	})
 
@@ -120,7 +126,12 @@ func apiEntryPoint(db *gorm.DB) {
 			}
 		}
 		game.Actions = append(game.Actions, action.Body.Action)
-		delete(Champions, action.Body.Action.Champion) // can't reuse
+		for i, champ := range availableChamps {
+			if strings.ToLower(champ) == action.Body.Action.Champion {
+				availableChamps = append(availableChamps[:i], availableChamps[i+1:]...)
+				break
+			}
+		} // can't reuse this champ in this game, remove from champ list
 		return &PostActionOutput{Body: winRates}, nil
 
 	})
