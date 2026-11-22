@@ -47,8 +47,9 @@ function App() {
 
   const [side, setSide] = useState('blue')
   const [actions, setActions] = useState([])
-  const [selectedSlot, setSelectedSlot] = useState(null)
+  const [selectedSlot, setSelectedSlot] = useState(null)  
   const [winRates, setWinRates] = useState({})
+
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -64,7 +65,6 @@ function App() {
         setAvailableChampions(availableData.champs || [])
         setAllChampions(champData.champs || [])
         setActions(gameData.actions || [])
-
         if (gameData.side) {
           setSide(gameData.side)
         }
@@ -73,8 +73,7 @@ function App() {
         const loadedProfiles = createEmptyProfiles()
 
         // Populate profiles from existing database users
-        console.log(userData)
-        userData.forEach(user => {
+        (userData||[]).forEach(user => {
           const role = user.assignedRole?.toLowerCase()
 
           if (!loadedProfiles[role]) return
