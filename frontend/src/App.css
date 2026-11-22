@@ -404,16 +404,14 @@ button {
 }
 
 .champion-role {
-  display: inline-block;
-  margin-top: 5px;
-  padding: 3px 7px;
-  border-radius: 5px;
-  background: rgba(100, 153, 255, 0.13);
-  color: #91baff;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.7px;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #60a5fa;
+  font-weight: 600;
+  margin-top: 3px;
 }
+
+
 
 .results-section {
   margin-top: 35px;
@@ -830,6 +828,12 @@ button {
   }
 }
 
+.action-matchup {
+  display: block;
+  font-size: 11px;
+  color: #999;
+  margin-top: 3px;
+}
 
 @keyframes loading-spin {
   to {

@@ -12,3 +12,6 @@ defaults.json
 
 # Local env/config
 .env
+
+# My database storage!
+public.db

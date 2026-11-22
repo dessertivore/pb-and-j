@@ -41,7 +41,7 @@ function App() {
   const [page, setPage] = useState('draft')
   const [pickLoading, setPickLoading] = useState(false)
   const [champions, setChampions] = useState([])
- const [profiles, setProfiles] = useState(createEmptyProfiles)
+  const [profiles, setProfiles] = useState(createEmptyProfiles)
 
   const [side, setSide] = useState('blue')
   const [actions, setActions] = useState([])
@@ -51,52 +51,52 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-  async function initialise() {
-    try {
-      const [champData, gameData, userData] = await Promise.all([
-        api('/champions'),
-        api('/game'),
-        api('/user'),
-      ])
+    async function initialise() {
+      try {
+        const [champData, gameData, userData] = await Promise.all([
+          api('/champions'),
+          api('/game'),
+          api('/user'),
+        ])
 
-      setChampions(champData.champs || [])
-      setActions(gameData.actions || [])
+        setChampions(champData.champs || [])
+        setActions(gameData.actions || [])
 
-      if (gameData.side) {
-        setSide(gameData.side)
-      }
-
-      // Start with five empty profiles
-      const loadedProfiles = createEmptyProfiles()
-
-      // Populate profiles from existing database users
-      console.log(userData)
-      userData.forEach(user => {
-        const role = user.assignedRole?.toLowerCase()
-
-        if (!loadedProfiles[role]) return
-
-        loadedProfiles[role] = {
-          displayName: user.displayName || '',
-          username: user.username || '',
-          assignedRole: role,
-          preferredChampions: (
-            user.preferredChampions || []
-          ).map(champ => champ.toLowerCase()),
+        if (gameData.side) {
+          setSide(gameData.side)
         }
-      })
 
-      setProfiles(loadedProfiles)
+        // Start with five empty profiles
+        const loadedProfiles = createEmptyProfiles()
 
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+        // Populate profiles from existing database users
+        console.log(userData)
+        userData.forEach(user => {
+          const role = user.assignedRole?.toLowerCase()
+
+          if (!loadedProfiles[role]) return
+
+          loadedProfiles[role] = {
+            displayName: user.displayName || '',
+            username: user.username || '',
+            assignedRole: role,
+            preferredChampions: (
+              user.preferredChampions || []
+            ).map(champ => champ.toLowerCase()),
+          }
+        })
+
+        setProfiles(loadedProfiles)
+
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  initialise()
-}, [])
+    initialise()
+  }, [])
 
   const opponentSide = side === 'blue' ? 'red' : 'blue'
 
@@ -202,11 +202,13 @@ function App() {
         body: JSON.stringify({ action }),
       })
 
-      setActions(previous => [...previous, action])
-
-      if (isOpponentPick && result) {
-        setWinRates(result)
-      }
+      setActions(previous => [
+        ...previous,
+        {
+          ...action,
+          winRates: result || {},
+        },
+      ])
 
     } catch (err) {
       setError(err.message)
@@ -267,7 +269,6 @@ function App() {
       })
 
       setActions([])
-      setWinRates({})
       setSelectedSlot(null)
     } catch (err) {
       setError(err.message)
@@ -327,9 +328,27 @@ function App() {
                             c => c.toLowerCase() === action.champion
                           ) || action.champion}
                         </span>
+
+                        {action.type === 'pick' && (
+                          <span className="champion-role">
+                            {action.role?.toUpperCase()}
+                          </span>
+                        )}
+
                         <span className="slot-number">
                           {index + 1}
                         </span>
+
+                        {action.winRates &&
+                          Object.entries(action.winRates)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 3)
+                            .map(([champion, rate]) => (
+                              <span key={champion} className="action-matchup">
+                                {champion} – {rate.toFixed(1)}%
+                              </span>
+                            ))
+                        }
                       </>
                     ) : (
                       <>

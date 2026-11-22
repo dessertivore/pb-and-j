@@ -108,23 +108,20 @@ func apiEntryPoint(db *gorm.DB) {
 
 	// Register POST /action handler
 	huma.Post(api, "/action", func(ctx context.Context, action *PostActionInput) (*PostActionOutput, error) {
-		game.Actions = append(game.Actions, action.Body.Action)
+		var winRates map[string]float64
 		if action.Body.Action.Side != game.UserSide {
 			if action.Body.Action.Type == "pick" {
 
 				relevantUser := GetUsersFromDB(*db, []string{}, action.Body.Action.Role)
 				fmt.Println("Comparing win rates against champs for", relevantUser[0].DisplayName)
-				winRates := getWinRates(action.Body.Action, relevantUser[0], db)
+				winRates = getWinRates(action.Body.Action, relevantUser[0], db)
+				action.Body.Action.WinRates = winRates
 				fmt.Println("Successfully added action " + action.Body.Action.Type)
-				delete(Champions, action.Body.Action.Champion) // can't reuse
-				return &PostActionOutput{Body: winRates}, nil
-			} else {
-				delete(Champions, action.Body.Action.Champion) // can't reuse
-				return &PostActionOutput{Body: make(map[string]float64)}, nil
 			}
 		}
+		game.Actions = append(game.Actions, action.Body.Action)
 		delete(Champions, action.Body.Action.Champion) // can't reuse
-		return nil, nil
+		return &PostActionOutput{Body: winRates}, nil
 
 	})
 

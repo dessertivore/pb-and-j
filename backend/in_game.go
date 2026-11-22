@@ -24,10 +24,11 @@ const (
 const WinRateURL = "https://op.gg/lol/champions/%s/build/%s?target_champion=%s"
 
 type Action struct {
-	Side     Side       `json:"side" default:"red"`
-	Type     ActionType `json:"type" default:"pick"`
-	Champion string     `json:"champion,omitempty" default:"yasuo" doc:"Empty for a skipped ban"`
-	Role     string     `json:"role" default:"top" query:"role" enum:"top,jungle,mid,bottom,support" doc:"Lane role. User will have to guess this for opponent."`
+	Side     Side               `json:"side" default:"red"`
+	Type     ActionType         `json:"type" default:"pick"`
+	Champion string             `json:"champion,omitempty" default:"yasuo" doc:"Empty for a skipped ban"`
+	Role     string             `json:"role" default:"top" query:"role" enum:"top,jungle,mid,bottom,support" doc:"Lane role. User will have to guess this for opponent."`
+	WinRates map[string]float64 `json:"winRates,omitempty"`
 }
 
 type Phase struct {
