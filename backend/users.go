@@ -42,20 +42,6 @@ func DefaultUser() *User {
 	return &User{DisplayName: "default_user", Username: "dessertivore", PreferredChampions: champs, AssignedRole: "top"}
 }
 
-func ValidateChampsAgainstCache(champs *[]string) []Champion {
-	validatedChamps := make([]Champion, 0, 5)
-
-	for _, champ := range *champs {
-		champ = strings.ToLower(champ)
-		if validChamp, ok := Champions[champ]; ok {
-			validatedChamps = append(validatedChamps, validChamp)
-		} else {
-			fmt.Println("Champion", champ, "does not exist")
-		}
-	}
-	return validatedChamps
-}
-
 func DefaultTeam() Team {
 	return Team{
 		Top:     *DefaultUser(),
@@ -123,4 +109,31 @@ func CreateTeamFromUsers(users []User) Team {
 
 	}
 	return team
+}
+
+func UpsertUser(user *CreateUserInput, db *gorm.DB) (*CreateUserInput, error) {
+	validatedChamps := ValidateChampsAgainstCache(&user.Body.PreferredChampions)
+
+	result := db.Save(&DBUser{DisplayName: user.Body.DisplayName,
+		Username:     user.Body.Username,
+		AssignedRole: user.Body.AssignedRole})
+
+	if result.Error != nil {
+		fmt.Println(result.Error)
+		return nil, result.Error
+	}
+
+	var champOrms []UserToChampion
+	for _, validatedChamp := range validatedChamps {
+		champOrms = append(champOrms, UserToChampion{Username: user.Body.Username, ChampionName: strings.ToLower(validatedChamp.Name)})
+	}
+	result = db.Save(&champOrms)
+	if result.Error != nil {
+		fmt.Println(result.Error)
+		return nil, result.Error
+	}
+
+	fmt.Println("Successfully added or updated " + user.Body.DisplayName)
+	return &CreateUserInput{Body: user.Body}, nil
+
 }

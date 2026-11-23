@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -112,60 +111,16 @@ func getChamps(ctx context.Context, db *gorm.DB, forceRefreshCache bool) ([]stri
 	return champs, nil
 }
 
-func scrapeWinRates(winRateURL string) (float64, error) {
-	client := &http.Client{Timeout: 15 * time.Second}
+func ValidateChampsAgainstCache(champs *[]string) []Champion {
+	validatedChamps := make([]Champion, 0, 5)
 
-	req, err := http.NewRequest("GET", winRateURL, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("HTTP error: %s", resp.Status)
-	}
-
-	// Parse the HTML response.
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-
-	// Find the Win rate element and extract its percentage.
-	var winRate float64
-	var found bool
-
-	doc.Find("em").EachWithBreak(func(i int, s *goquery.Selection) bool {
-
-		if strings.TrimSpace(s.Text()) == "Win rate" {
-
-			value := strings.TrimSuffix(
-				strings.TrimSpace(s.Parent().Find("b").First().Text()),
-				"%",
-			)
-
-			winRate, err = strconv.ParseFloat(value, 64)
-			found = err == nil
-
-			return false
+	for _, champ := range *champs {
+		champ = strings.ToLower(champ)
+		if validChamp, ok := Champions[champ]; ok {
+			validatedChamps = append(validatedChamps, validChamp)
+		} else {
+			fmt.Println("Champion", champ, "does not exist")
 		}
-
-		return true
-	})
-
-	if !found {
-		if err != nil {
-			return 0, err
-		}
-		return 0, fmt.Errorf("win rate not found")
 	}
-
-	return winRate, nil
+	return validatedChamps
 }

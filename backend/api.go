@@ -5,50 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
 )
-
-type ChampsOutput struct {
-	Body struct {
-		Champs []string `json:"champs" example:"[\"Dr Mundo\"]" doc:"List of available champs"`
-	}
-}
-type GetChampionsInput struct {
-	All bool `query:"all" nullable:"true"`
-}
-type GetUsersInput struct {
-	Username string `query:"username" example:"dessertivore"`
-}
-
-type CreateUserInput struct {
-	Body User
-}
-
-type GetUsersOutput struct {
-	Body []User
-}
-
-type SetSideInput struct {
-	Side Side `query:"side"`
-}
-
-type GetGameOutput struct {
-	Body PickBan
-}
-type PostActionInput struct {
-	Body struct {
-		Action Action `json:"action"`
-	}
-}
-
-type PostActionOutput struct {
-	Body map[string]float64 `json:"win_rates"`
-}
 
 func apiEntryPoint(db *gorm.DB) {
 	// Create a new router & API
@@ -88,56 +50,12 @@ func apiEntryPoint(db *gorm.DB) {
 
 	// Register POST /user handler
 	huma.Post(api, "/user", func(ctx context.Context, user *CreateUserInput) (*CreateUserInput, error) {
-		validatedChamps := ValidateChampsAgainstCache(&user.Body.PreferredChampions)
-
-		result := db.Save(&DBUser{DisplayName: user.Body.DisplayName,
-			Username:     user.Body.Username,
-			AssignedRole: user.Body.AssignedRole})
-
-		if result.Error != nil {
-			fmt.Println(result.Error)
-			return nil, result.Error
-		}
-
-		var champOrms []UserToChampion
-		for _, validatedChamp := range validatedChamps {
-			champOrms = append(champOrms, UserToChampion{Username: user.Body.Username, ChampionName: strings.ToLower(validatedChamp.Name)})
-		}
-		result = db.Save(&champOrms)
-		if result.Error != nil {
-			fmt.Println(result.Error)
-			return nil, result.Error
-		}
-
-		fmt.Println("Successfully added or updated " + user.Body.DisplayName)
-		return &CreateUserInput{Body: user.Body}, nil
+		return UpsertUser(user, db)
 	})
 
 	// Register POST /action handler
 	huma.Post(api, "/action", func(ctx context.Context, action *PostActionInput) (*PostActionOutput, error) {
-		var winRates map[string]float64
-		if action.Body.Action.Side != game.UserSide {
-			if action.Body.Action.Type == "pick" {
-
-				relevantUser := GetUsersFromDB(*db, []string{}, action.Body.Action.Role)
-				if len(relevantUser) > 0 {
-					fmt.Println("Comparing win rates against champs for", relevantUser[0].DisplayName)
-					winRates = getWinRates(action.Body.Action, relevantUser[0], db)
-					action.Body.Action.WinRates = winRates
-				} else {
-					fmt.Println("No relevant users in this role to compare champs for")
-				}
-				fmt.Println("Successfully added action " + action.Body.Action.Type)
-			}
-		}
-		game.Actions = append(game.Actions, action.Body.Action)
-		for i, champ := range availableChamps {
-			if strings.ToLower(champ) == action.Body.Action.Champion {
-				availableChamps = append(availableChamps[:i], availableChamps[i+1:]...)
-				break
-			}
-		} // can't reuse this champ in this game, remove from champ list
-		return &PostActionOutput{Body: winRates}, nil
+		return postActionfunc(action, game, &availableChamps, db)
 
 	})
 
