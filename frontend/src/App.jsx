@@ -44,11 +44,10 @@ function App() {
   const [availableChampions, setAvailableChampions] = useState([])
 
   const [profiles, setProfiles] = useState(createEmptyProfiles)
-
+  const [existingUsers, setExistingUsers] = useState([])
   const [side, setSide] = useState('blue')
   const [actions, setActions] = useState([])
   const [selectedSlot, setSelectedSlot] = useState(null)
-  const [winRates, setWinRates] = useState({})
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -68,25 +67,25 @@ function App() {
         if (gameData.side) {
           setSide(gameData.side)
         }
-
+        setExistingUsers(userData || [])
         // Start with five empty profiles
         const loadedProfiles = createEmptyProfiles();
 
-          // Populate profiles from existing database users
-          (userData || []).forEach(user => {
-            const role = user.assignedRole?.toLowerCase()
+        // Populate profiles from existing database users
+        (userData || []).forEach(user => {
+          const role = user.assignedRole?.toLowerCase()
 
-            if (!loadedProfiles[role]) return
+          if (!loadedProfiles[role]) return
 
-            loadedProfiles[role] = {
-              displayName: user.displayName || '',
-              username: user.username || '',
-              assignedRole: role,
-              preferredChampions: (
-                user.preferredChampions || []
-              ).map(champ => champ.toLowerCase()),
-            }
-          })
+          loadedProfiles[role] = {
+            displayName: user.displayName || '',
+            username: user.username || '',
+            assignedRole: role,
+            preferredChampions: (
+              user.preferredChampions || []
+            ).map(champ => champ.toLowerCase()),
+          }
+        })
 
         setProfiles(loadedProfiles)
 
@@ -102,6 +101,21 @@ function App() {
 
   const opponentSide = side === 'blue' ? 'red' : 'blue'
 
+  function loadExistingProfile(username) {
+    const user = existingUsers.find(
+      user => user.username === username
+    )
+
+    if (!user) return
+
+    updateProfile(activeRole, {
+      displayName: user.displayName || '',
+      username: user.username || '',
+      preferredChampions: (
+        user.preferredChampions || []
+      ).map(champ => champ.toLowerCase()),
+    })
+  }
   function getSlots(actionSide, type) {
     return actions.filter(
       action => action.side === actionSide && action.type === type
@@ -116,16 +130,6 @@ function App() {
       },
     }))
   }
-
-  // function updatePickRole(action, role) {
-  //   setActions(previous =>
-  //     previous.map(item =>
-  //       item === action
-  //         ? { ...item, role }
-  //         : item
-  //     )
-  //   )
-  // }
 
   async function saveProfile(event) {
     event.preventDefault()
@@ -144,10 +148,6 @@ function App() {
           })
         )
       )
-
-      await api(`/side?side=${side}`, {
-        method: 'POST',
-      })
 
       setPage('draft')
     } catch (err) {
@@ -351,27 +351,34 @@ function App() {
         </div>
       )}
       <header className="navbar">
-        <button className="brand" onClick={() => setPage('draft')}>
-          <span className="brand-icon">PB</span>
-          <span>PB<span className="brand-accent">&</span>J</span>
-        </button>
 
-        <nav>
+        {/* Logo row */}
+        <div className="navbar-logo">
+          <button
+            className="logo-button"
+            onClick={() => setPage('draft')}
+          >
+            <img src="/full_logo.png" alt="PB&J Logo" />
+          </button>
+        </div>
+
+        {/* Navigation row */}
+        <nav className="navbar-links">
           <button
             className={page === 'draft' ? 'active' : ''}
             onClick={() => setPage('draft')}
           >
             Draft
           </button>
+
           <button
             className={page === 'profile' ? 'active' : ''}
             onClick={() => setPage('profile')}
           >
-            Player settings
+            Player Settings
           </button>
         </nav>
 
-        <span className="version">PICK / BAN HELPER</span>
       </header>
 
       {error && <div className="error">{error}</div>}
@@ -425,7 +432,28 @@ function App() {
                       {activeRole.toUpperCase()}
                     </span>
                   </div>
+                  <label>
+                    Load existing player
+                    <select
+                      value=""
+                      onChange={e => loadExistingProfile(e.target.value)}
+                    >
+                      <option value="">Select a player...</option>
 
+                      {existingUsers
+                        .filter(user =>
+                          user.assignedRole?.toLowerCase() === activeRole
+                        )
+                        .map(user => (
+                          <option
+                            key={user.username}
+                            value={user.username}
+                          >
+                            {user.displayName}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
                   <label>
                     Display name
                     <input
