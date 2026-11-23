@@ -47,7 +47,7 @@ function App() {
 
   const [side, setSide] = useState('blue')
   const [actions, setActions] = useState([])
-  const [selectedSlot, setSelectedSlot] = useState(null)  
+  const [selectedSlot, setSelectedSlot] = useState(null)
   const [winRates, setWinRates] = useState({})
 
   const [error, setError] = useState('')
@@ -70,23 +70,23 @@ function App() {
         }
 
         // Start with five empty profiles
-        const loadedProfiles = createEmptyProfiles()
+        const loadedProfiles = createEmptyProfiles();
 
-        // Populate profiles from existing database users
-        (userData||[]).forEach(user => {
-          const role = user.assignedRole?.toLowerCase()
+          // Populate profiles from existing database users
+          (userData || []).forEach(user => {
+            const role = user.assignedRole?.toLowerCase()
 
-          if (!loadedProfiles[role]) return
+            if (!loadedProfiles[role]) return
 
-          loadedProfiles[role] = {
-            displayName: user.displayName || '',
-            username: user.username || '',
-            assignedRole: role,
-            preferredChampions: (
-              user.preferredChampions || []
-            ).map(champ => champ.toLowerCase()),
-          }
-        })
+            loadedProfiles[role] = {
+              displayName: user.displayName || '',
+              username: user.username || '',
+              assignedRole: role,
+              preferredChampions: (
+                user.preferredChampions || []
+              ).map(champ => champ.toLowerCase()),
+            }
+          })
 
         setProfiles(loadedProfiles)
 

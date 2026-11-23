@@ -120,9 +120,13 @@ func apiEntryPoint(db *gorm.DB) {
 			if action.Body.Action.Type == "pick" {
 
 				relevantUser := GetUsersFromDB(*db, []string{}, action.Body.Action.Role)
-				fmt.Println("Comparing win rates against champs for", relevantUser[0].DisplayName)
-				winRates = getWinRates(action.Body.Action, relevantUser[0], db)
-				action.Body.Action.WinRates = winRates
+				if len(relevantUser) > 0 {
+					fmt.Println("Comparing win rates against champs for", relevantUser[0].DisplayName)
+					winRates = getWinRates(action.Body.Action, relevantUser[0], db)
+					action.Body.Action.WinRates = winRates
+				} else {
+					fmt.Println("No relevant users in this role to compare champs for")
+				}
 				fmt.Println("Successfully added action " + action.Body.Action.Type)
 			}
 		}

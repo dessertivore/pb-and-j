@@ -30,4 +30,7 @@ services:
       - "1234:5432"
     volumes:
       - ./db/init.sql:/docker-entrypoint-initdb.d/db.sql
+      - ./db/data:/var/lib/postgresql/data # save data somewhere local
+      
+  
 
