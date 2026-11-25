@@ -153,15 +153,15 @@ func scrapeWinRates(winRateURL string) (float64, error) {
 	return winRate, nil
 }
 
-func postActionfunc(action *PostActionInput, game *PickBan, availableChamps *[]string, db *gorm.DB) (*PostActionOutput, error) {
+func postActionFunc(action *PostActionInput, game *PickBan, availableChamps *[]string, db *gorm.DB) (*PostActionOutput, error) {
 	var winRates map[string]float64
 	if action.Body.Action.Side != game.UserSide {
 		if action.Body.Action.Type == "pick" {
+			relevantUser := game.Team.selectTeamMate(action.Body.Action.Role)
 
-			relevantUser := GetUsersFromDB(*db, []string{}, action.Body.Action.Role)
-			if len(relevantUser) > 0 {
-				fmt.Println("Comparing win rates against champs for", relevantUser[0].DisplayName)
-				winRates = getWinRates(action.Body.Action, relevantUser[0], db)
+			if relevantUser.DisplayName != "" { // not empty User obj
+				fmt.Println("Comparing win rates against champs for", relevantUser.DisplayName)
+				winRates = getWinRates(action.Body.Action, relevantUser, db)
 				action.Body.Action.WinRates = winRates
 			} else {
 				fmt.Println("No relevant users in this role to compare champs for")

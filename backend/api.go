@@ -55,7 +55,7 @@ func apiEntryPoint(db *gorm.DB) {
 
 	// Register POST /action handler
 	huma.Post(api, "/action", func(ctx context.Context, action *PostActionInput) (*PostActionOutput, error) {
-		return postActionfunc(action, game, &availableChamps, db)
+		return postActionFunc(action, game, &availableChamps, db)
 
 	})
 

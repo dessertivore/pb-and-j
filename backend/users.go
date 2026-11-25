@@ -22,6 +22,23 @@ type Team struct {
 	Support User `json:"support"`
 }
 
+func (team Team) selectTeamMate(role string) User {
+	var output User
+	switch role {
+	case "top":
+		output = team.Top
+	case "mid":
+		output = team.Mid
+	case "bottom":
+		output = team.Bottom
+	case "jungle":
+		output = team.Jungle
+	case "support":
+		output = team.Support
+	}
+	return output
+}
+
 type DBUser struct {
 	DisplayName  string
 	Username     string `gorm:"primaryKey"`
