@@ -308,8 +308,8 @@ function App() {
                           Object.entries(action.winRates)
                             .sort((a, b) => b[1] - a[1])
                             .slice(0, 3)
-                            .map(([champion, rate]) => (
-                              <span key={champion} className="action-matchup">
+                            .map(([champion, rate], index) => (
+                              <span key={champion} className={index === 0 ? "best-matchup" : "action-matchup"}>
                                 {champion} – {rate.toFixed(1)}%
                               </span>
                             ))
@@ -326,8 +326,9 @@ function App() {
               })}
             </div>
           </div>
-        ))}
-      </section>
+        ))
+        }
+      </section >
     )
   }
 
@@ -352,7 +353,7 @@ function App() {
       )}
       <header className="navbar">
 
-        {/* Logo row */}
+        {/* Logo at the top */}
         <div className="navbar-logo">
           <button
             className="logo-button"
@@ -362,20 +363,19 @@ function App() {
           </button>
         </div>
 
-        {/* Navigation row */}
         <nav className="navbar-links">
           <button
             className={page === 'draft' ? 'active' : ''}
             onClick={() => setPage('draft')}
           >
-            Draft
+            📝 Draft
           </button>
 
           <button
             className={page === 'profile' ? 'active' : ''}
             onClick={() => setPage('profile')}
           >
-            Player Settings
+            ⚙ Player settings
           </button>
         </nav>
 
@@ -551,12 +551,7 @@ function App() {
               <p>Track the draft and find favourable matchups.</p>
             </div>
 
-            <button
-              className="secondary-button"
-              onClick={() => setPage('profile')}
-            >
-              ⚙ Player settings
-            </button>
+
           </div>
 
           <div className="draft-toolbar">
@@ -585,11 +580,14 @@ function App() {
             </div>
 
             <div className="player-summary">
-              <span className="toolbar-label">PLAYER</span>
               <strong>
                 {Object.values(profiles).filter(p => p.username).length} / 5 players configured
               </strong>
-              <span>PLAYER PROFILES</span>
+              <span>PLAYERS SELECTED: {Object.values(profiles)
+                .filter(p => p.username.trim() !== '')
+                .map(p => (
+                  <li key={p.username}>{p.username}</li>
+                ))}</span>
             </div>
           </div>
 
